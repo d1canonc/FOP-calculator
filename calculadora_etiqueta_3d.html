@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FrontLabel Pro · Calculadora de Etiquetas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+:root {
+  --bg:#0e0e0f; --surface:#18181b; --surface2:#1f1f23;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.14);
+  --text:#f0f0f0; --muted:#777; --accent:#c8f53a; --accent2:#3af5a0;
+  --red:#ff4e4e; --amber:#ffb23a;
+  --mono:'DM Mono',monospace; --sans:'DM Sans',sans-serif; --display:'Syne',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden;}
+.layout{display:grid;grid-template-columns:390px 1fr;height:100vh;}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.sidebar-header{padding:18px 22px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.logo{font-family:var(--display);font-size:17px;font-weight:800;letter-spacing:-.5px;}
+.logo span{color:var(--accent);}
+.subtitle{font-size:10px;color:var(--muted);margin-top:2px;font-family:var(--mono);}
+.tabs-nav{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+.tab-btn{flex:1;padding:9px 6px;font-size:10px;font-weight:500;font-family:var(--mono);color:var(--muted);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;text-transform:uppercase;letter-spacing:.05em;}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.sidebar-body{flex:1;overflow-y:auto;padding:0;}
+.sidebar-body::-webkit-scrollbar{width:3px;}
+.sidebar-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.tab-panel{display:none;padding:14px;}
+.tab-panel.active{display:block;}
+.section{margin-bottom:18px;}
+.sec-title{font-family:var(--mono);font-size:9px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:9px;display:flex;align-items:center;gap:6px;}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.field{margin-bottom:7px;}
+.field label{display:block;font-size:10px;color:var(--muted);margin-bottom:3px;font-family:var(--mono);}
+.field input,.field select{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 9px;font-size:12px;color:var(--text);font-family:var(--mono);transition:border-color .15s;}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent);}
+.field select option{background:var(--surface2);}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+.btn-calc{width:100%;background:var(--accent);color:#000;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:700;font-family:var(--display);cursor:pointer;transition:all .15s;margin-top:6px;}
+.btn-calc:hover{background:#d4ff40;transform:translateY(-1px);}
+.result-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px;margin-bottom:7px;}
+.rc-title{font-size:9px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-bottom:8px;}
+.mrow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;}
+.ml{font-size:11px;color:var(--muted);}
+.mv{font-size:12px;font-weight:500;font-family:var(--mono);color:var(--text);}
+.mv.ac{color:var(--accent);} .mv.wn{color:var(--amber);} .mv.dn{color:var(--red);}
+.chip{display:inline-flex;align-items:center;gap:3px;background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:2px 7px;font-size:9px;font-family:var(--mono);margin:2px;color:#fff;}
+.chip.on{background:#ff4e4e1a;border-color:#ff4e4e44;color:var(--red);}
+.chip.ok{background:#3af5a01a;border-color:#3af5a044;color:var(--accent2);}
+.c-chip{padding:4px 10px;border-radius:99px;font-size:10px;font-family:var(--mono);border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .15s;display:inline-block;margin:2px;}
+.c-chip.sel{background:rgba(200,245,58,.12);border-color:var(--accent);color:var(--accent);}
+.cr{border:1px solid var(--border);border-radius:6px;padding:9px;margin-bottom:5px;}
+.cr-head{display:flex;justify-content:space-between;margin-bottom:5px;}
+.cr-name{font-weight:500;font-family:var(--mono);font-size:10px;}
+.cr-st{font-size:9px;font-family:var(--mono);padding:2px 7px;border-radius:99px;}
+.cr-st.ok{background:rgba(58,245,160,.12);color:var(--accent2);}
+.cr-st.al{background:rgba(255,78,78,.12);color:var(--red);}
+.main{display:flex;flex-direction:column;background:var(--bg);position:relative;}
+.toolbar{display:flex;align-items:center;justify-content:space-between;padding:11px 18px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.vbtns{display:flex;gap:4px;}
+.vbtn{padding:5px 12px;font-size:10px;font-family:var(--mono);background:var(--surface);border:1px solid var(--border2);border-radius:5px;color:var(--muted);cursor:pointer;transition:all .15s;}
+.vbtn.active,.vbtn:hover{background:var(--surface2);color:var(--text);border-color:var(--accent);}
+.canvas-wrap{flex:1;position:relative;overflow:hidden;}
+#three-canvas{width:100%;height:100%;display:block;}
+.view2d{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#080808;overflow:auto;}
+.view2d.vis{display:flex;}
+#cv2d{background:white;box-shadow:0 20px 100px rgba(0,0,0,.95);}
+.info-bar{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(14,14,15,.9);border:1px solid var(--border2);border-radius:8px;padding:5px 13px;font-size:10px;font-family:var(--mono);color:var(--muted);white-space:nowrap;}
+.spinner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:10;font-family:var(--mono);font-size:11px;color:var(--muted);}
+.size-badge{display:inline-block;background:rgba(200,245,58,.1);border:1px solid rgba(200,245,58,.3);border-radius:4px;padding:2px 8px;font-size:10px;font-family:var(--mono);color:var(--accent);margin-top:4px;}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">Front<span>Label</span> Pro</div>
+    <div class="subtitle">sellos · tipografía · 3d preview</div>
+  </div>
+  <div class="tabs-nav">
+    <button class="tab-btn active" onclick="ST('datos')">Datos</button>
+    <button class="tab-btn" onclick="ST('envase')">Envase</button>
+    <button class="tab-btn" onclick="ST('paises')">Países</button>
+    <button class="tab-btn" onclick="ST('resultado')">Resultados</button>
+  </div>
+  <div class="sidebar-body">
+
+    <div class="tab-panel active" id="tp-datos">
+      <div class="section">
+        <div class="sec-title">Producto</div>
+        <div class="field"><label>Nombre del producto</label><input id="pname" value="Bebida de Naranja"></div>
+        <div class="g2">
+          <div class="field"><label>Porción (ml/g)</label><input type="number" id="porcion" value="240"></div>
+          <div class="field"><label>Porciones/envase</label><input type="number" id="nporciones" value="1"></div>
+        </div>
+        <div class="field"><label>Tipo de producto</label>
+          <select id="tipoprod"><option value="liquido">Líquido (ml)</option><option value="solido">Sólido (g)</option></select>
+        </div>
+      </div>
+      <div class="section">
+        <div class="sec-title">Nutrientes por porción</div>
+        <div class="g2">
+          <div class="field"><label>Energía (kcal)</label><input type="number" id="energia" value="110"></div>
+          <div class="field"><label>Grasas totales (g)</label><input type="number" id="grasas" value="0"></div>
+          <div class="field"><label>Grasas saturadas (g)</label><input type="number" id="grasasSat" value="0"></div>
+          <div class="field"><label>Grasas trans (g)</label><input type="number" id="grasasTrans" value="0"></div>
+          <div class="field"><label>Carbohidratos (g)</label><input type="number" id="carbos" value="28"></div>
+          <div class="field"><label>Azúcares totales (g)</label><input type="number" id="azucares" value="26"></div>
+          <div class="field"><label>Fibra (g)</label><input type="number" id="fibra" value="0"></div>
+          <div class="field"><label>Proteínas (g)</label><input type="number" id="proteinas" value="0"></div>
+          <div class="field"><label>Sodio (mg)</label><input type="number" id="sodio" value="75"></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="sec-title">Colores de etiqueta</div>
+        <div class="g3">
+          <div class="field"><label>Fondo</label><input type="color" id="clrBg" value="#ffffff" style="height:32px;padding:2px 4px;"></div>
+          <div class="field"><label>Texto</label><input type="color" id="clrTxt" value="#000000" style="height:32px;padding:2px 4px;"></div>
+          <div class="field"><label>Acento</label><input type="color" id="clrAcc" value="#cc0000" style="height:32px;padding:2px 4px;"></div>
+        </div>
+      </div>
+      <button class="btn-calc" onclick="calcularTodo()">⚡ Calcular y generar etiqueta</button>
+    </div>
+
+    <div class="tab-panel" id="tp-envase">
+      <div class="section">
+        <div class="sec-title">Dimensiones físicas de la etiqueta</div>
+        <p style="font-size:10px;color:var(--muted);line-height:1.6;margin-bottom:10px;font-family:var(--mono);">El tamaño de la botella 3D se escala para que la etiqueta tenga exactamente estas dimensiones.</p>
+        <div class="g2">
+          <div class="field"><label>Ancho etiqueta (mm)</label><input type="number" id="lblW" value="220" oninput="updateBadge()"></div>
+          <div class="field"><label>Alto etiqueta (mm)</label><input type="number" id="lblH" value="90" oninput="updateBadge()"></div>
+        </div>
+        <div id="sbadge"></div>
+      </div>
+      <div class="section">
+        <div class="sec-title">Envase</div>
+        <div class="g2">
+          <div class="field"><label>Capacidad (ml)</label><input type="number" id="envVol" value="500"></div>
+          <div class="field"><label>Color tapa</label><input type="color" id="clrCap" value="#cc0000" style="height:32px;padding:2px 4px;"></div>
+        </div>
+        <div class="field"><label>Color botella</label>
+          <select id="bottleColor">
+            <option value="clear">Transparente</option>
+            <option value="green">Verde</option>
+            <option value="amber">Ambar</option>
+            <option value="blue">Azul</option>
+          </select>
+        </div>
+      </div>
+      <div class="result-card" id="dimResult" style="display:none;">
+        <div class="rc-title">Tamaños mínimos calculados</div>
+        <div id="dimContent"></div>
+      </div>
+      <button class="btn-calc" onclick="calcularTodo()">⚡ Aplicar y actualizar 3D</button>
+    </div>
+
+    <div class="tab-panel" id="tp-paises">
+      <div class="section">
+        <div class="sec-title">Regulaciones activas</div>
+        <div id="cchips" style="margin-bottom:12px;">
+          <span class="c-chip sel" data-c="CL" onclick="toggleC(this)">🇨🇱 Chile</span>
+          <span class="c-chip sel" data-c="MX" onclick="toggleC(this)">🇲🇽 México</span>
+          <span class="c-chip sel" data-c="PE" onclick="toggleC(this)">🇵🇪 Perú</span>
+          <span class="c-chip sel" data-c="CO" onclick="toggleC(this)">🇨🇴 Colombia</span>
+          <span class="c-chip sel" data-c="AR" onclick="toggleC(this)">🇦🇷 Argentina</span>
+          <span class="c-chip" data-c="EC" onclick="toggleC(this)">🇪🇨 Ecuador</span>
+          <span class="c-chip" data-c="BR" onclick="toggleC(this)">🇧🇷 Brasil</span>
+          <span class="c-chip" data-c="EU" onclick="toggleC(this)">🇪🇺 NutriScore</span>
+        </div>
+      </div>
+      <div id="cresults"></div>
+    </div>
+
+    <div class="tab-panel" id="tp-resultado">
+      <div id="rcontent"><p style="font-size:11px;color:var(--muted);font-family:var(--mono);">Presiona "Calcular" para ver resultados.</p></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="main">
+  <div class="toolbar">
+    <div style="font-size:11px;font-family:var(--mono);color:var(--muted);" id="tlinfo">Vista previa 3D interactiva</div>
+    <div class="vbtns">
+      <button class="vbtn active" id="btn-3d" onclick="setView('3d')">3D Botella</button>
+      <button class="vbtn" id="btn-etiqueta" onclick="setView('etiqueta')">Etiqueta plana</button>
+      <button class="vbtn" id="btn-tabla" onclick="setView('tabla')">Tabla nutricional</button>
+    </div>
+  </div>
+  <div class="canvas-wrap">
+    <div class="spinner" id="spinner">Iniciando render 3D...</div>
+    <canvas id="three-canvas"></canvas>
+    <div class="view2d" id="view2d"><canvas id="cv2d"></canvas></div>
+    <div class="info-bar" id="ibar">Arrastra para rotar · Scroll para zoom</div>
+  </div>
+</div>
+
+</div>
+<script>
+// ═══ STATE
+let selPaises=['CL','MX','PE','CO','AR'];
+let calcData=null, currentView='3d', bottleGroup=null;
+let scene,camera,renderer3;
+let mouseDown=false,lastMX=0,rotY=0,targetRotY=0,clock_t=0;
+
+const REGS={
+  CL:{name:'Chile',    flag:'🇨🇱',tipo:'oct',txt:'ALTO EN',   us:{en:275,az:22.5,gs:6,  so:400},ul:{en:70, az:6,  gs:3, so:100},minMm:20,minPct:8},
+  MX:{name:'México',   flag:'🇲🇽',tipo:'oct',txt:'EXCESO EN', us:{en:275,az:22.5,gs:6,  so:400},ul:{en:70, az:6,  gs:3, so:100},minMm:20,minPct:8},
+  PE:{name:'Perú',     flag:'🇵🇪',tipo:'oct',txt:'ALTO EN',   us:{en:275,az:22.5,gs:6,  so:400},ul:{en:70, az:6,  gs:3, so:100},minMm:18,minPct:7.5},
+  CO:{name:'Colombia', flag:'🇨🇴',tipo:'oct',txt:'ALTO EN',   us:{en:275,az:22.5,gs:6,  so:400},ul:{en:40, az:5,  gs:3, so:100},minMm:20,minPct:8},
+  AR:{name:'Argentina',flag:'🇦🇷',tipo:'oct',txt:'ALTO EN',   us:{en:275,az:22.5,gs:6,  so:400},ul:{en:70, az:6,  gs:3, so:100},minMm:20,minPct:8},
+  EC:{name:'Ecuador',  flag:'🇪🇨',tipo:'sem',                 us:{en:200,az:15,  gs:4,  so:300},ul:{en:40, az:5,  gs:1.5,so:100}},
+  BR:{name:'Brasil',   flag:'🇧🇷',tipo:'oct',txt:'ALTO EM',   us:{en:300,az:15,  gs:6,  so:600},ul:{en:80, az:6,  gs:3, so:100},minMm:20,minPct:8},
+  EU:{name:'NutriScore',flag:'🇪🇺',tipo:'ns'}
+};
+
+// ═══ UI
+function ST(t){
+  ['datos','envase','paises','resultado'].forEach((n,i)=>{
+    document.querySelectorAll('.tab-btn')[i].classList.toggle('active',n===t);
+    document.getElementById('tp-'+n).classList.toggle('active',n===t);
+  });
+}
+function toggleC(el){
+  const c=el.dataset.c;
+  if(el.classList.contains('sel')){if(selPaises.length<=1)return;el.classList.remove('sel');selPaises=selPaises.filter(x=>x!==c);}
+  else{el.classList.add('sel');selPaises.push(c);}
+}
+function setView(v){
+  currentView=v;
+  ['3d','etiqueta','tabla'].forEach(x=>document.getElementById('btn-'+x).classList.toggle('active',x===v));
+  const c3=document.getElementById('three-canvas');
+  const c2=document.getElementById('view2d');
+  const ib=document.getElementById('ibar');
+  if(v==='3d'){c3.style.display='block';c2.classList.remove('vis');ib.textContent='Arrastra para rotar · Scroll para zoom';}
+  else{c3.style.display='none';c2.classList.add('vis');ib.textContent=v==='etiqueta'?'Vista plana — '+getV().lblW+'×'+getV().lblH+' mm':'Tabla nutricional completa';
+    if(calcData){v==='etiqueta'?draw2DLabel():draw2DTable();}}
+}
+function updateBadge(){
+  const w=+document.getElementById('lblW').value||220, h=+document.getElementById('lblH').value||90;
+  document.getElementById('sbadge').innerHTML=`<span class="size-badge">${w} × ${h} mm &nbsp;·&nbsp; ${(w*h/100).toFixed(0)} cm²</span>`;
+}
+
+// ═══ INPUTS
+function getV(){return{
+  nombre:document.getElementById('pname').value||'Producto',
+  porcion:+document.getElementById('porcion').value||240,
+  nporciones:+document.getElementById('nporciones').value||1,
+  energia:+document.getElementById('energia').value||0,
+  grasas:+document.getElementById('grasas').value||0,
+  grasasSat:+document.getElementById('grasasSat').value||0,
+  grasasTrans:+document.getElementById('grasasTrans').value||0,
+  carbos:+document.getElementById('carbos').value||0,
+  azucares:+document.getElementById('azucares').value||0,
+  fibra:+document.getElementById('fibra').value||0,
+  proteinas:+document.getElementById('proteinas').value||0,
+  sodio:+document.getElementById('sodio').value||0,
+  lblW:+document.getElementById('lblW').value||220,
+  lblH:+document.getElementById('lblH').value||90,
+  bgColor:document.getElementById('clrBg').value,
+  txtColor:document.getElementById('clrTxt').value,
+  accColor:document.getElementById('clrAcc').value,
+  capColor:document.getElementById('clrCap').value,
+  bottleColor:document.getElementById('bottleColor').value,
+  tipoProd:document.getElementById('tipoprod').value,
+};}
+function per100(v){const f=100/v.porcion;return{en:v.energia*f,gr:v.grasas*f,gs:v.grasasSat*f,gt:v.grasasTrans*f,ca:v.carbos*f,az:v.azucares*f,fi:v.fibra*f,pr:v.proteinas*f,so:v.sodio*f};}
+
+// ═══ REGULATION ENGINE
+function evalPais(cod,p100,v){
+  const reg=REGS[cod]; if(!reg) return{sellos:[]};
+  if(reg.tipo==='ns') return{tipo:'ns',ns:calcNS(p100)};
+  // Seleccionar umbrales correctos: liquidos usan ul, solidos usan us
+  const isLiq=(v.tipoProd==='liquido');
+  const u=(isLiq && reg.ul) ? reg.ul : reg.us;
+  if(reg.tipo==='sem') return{tipo:'sem',sem:calcSem(p100,u)};
+  const sellos=[];
+  if(p100.en>u.en) sellos.push({n:'ENERGÍA',    val:p100.en.toFixed(0)+' kcal', umbral:u.en+' kcal'});
+  if(p100.az>u.az) sellos.push({n:'AZÚCARES',   val:p100.az.toFixed(1)+' g',    umbral:u.az+' g'});
+  if(p100.gs>u.gs) sellos.push({n:'GRASAS SAT.',val:p100.gs.toFixed(1)+' g',    umbral:u.gs+' g'});
+  if(p100.so>u.so) sellos.push({n:'SODIO',      val:p100.so.toFixed(0)+' mg',   umbral:u.so+' mg'});
+  if(p100.gt>0)    sellos.push({n:'GRASAS TRANS',val:p100.gt.toFixed(1)+' g',   umbral:'0 g'});
+  const selloMm=Math.max(reg.minMm||20, Math.sqrt(v.lblW*v.lblH*(reg.minPct||8)/100));
+  return{tipo:'oct',sellos,txt:reg.txt,selloMm:+selloMm.toFixed(1)};
+}
+function calcNS(p){
+  const s=Math.floor(p.en/335)+Math.floor(p.az/4.5)+Math.floor(p.gs)+Math.floor(p.so/90)-Math.floor(p.fi/0.9)-Math.floor(p.pr/1.6);
+  if(s<=-1)return{l:'A',c:'#1E8F4E'};if(s<=2)return{l:'B',c:'#81C341'};
+  if(s<=10)return{l:'C',c:'#FFCC00',tc:'#333'};if(s<=18)return{l:'D',c:'#FF6600'};
+  return{l:'E',c:'#E63312'};
+}
+function calcSem(p,u){
+  const lv=(val,lo,hi)=>val>=hi?{l:'ALTO',c:'#E63312'}:val>=lo?{l:'MEDIO',c:'#FF6600'}:{l:'BAJO',c:'#1E8F4E'};
+  const gsHi=u?u.gs:4, gsLo=gsHi*0.5;
+  const azHi=u?u.az:15, azLo=azHi*0.4;
+  const naHi=u?u.so:300, naLo=naHi*0.4;
+  return[{n:'GRASAS',...lv(p.gr,gsLo,gsHi)},{n:'AZÚCARES',...lv(p.az,azLo,azHi)},{n:'SODIO',...lv(p.so,naLo,naHi)}];
+}
+function calcFonts(h){const b=h*0.04;return{
+  titulo:Math.max(3.5,b*2.5).toFixed(1),subtitulo:Math.max(2,b*1.4).toFixed(1),
+  nutrientes:Math.max(1.5,b*1.2).toFixed(1),ingredientes:Math.max(1.5,b).toFixed(1),
+  leyendas:Math.max(1.2,b*0.85).toFixed(1)};}
+
+// ═══ MAIN CALC
+function calcularTodo(){
+  const v=getV(), p100=per100(v), fonts=calcFonts(v.lblH), paisRes={};
+  selPaises.forEach(c=>{paisRes[c]=evalPais(c,p100,v);});
+  calcData={v,p100,fonts,paisRes};
+  updateBadge();
+
+  const selloMms=selPaises.filter(c=>paisRes[c]&&paisRes[c].selloMm).map(c=>paisRes[c].selloMm);
+  const maxSello=selloMms.length?Math.max(...selloMms):0;
+  const totalSellos=selPaises.reduce((a,c)=>{const r=paisRes[c];return a+(r&&r.sellos?r.sellos.length:0);},0);
+
+  document.getElementById('dimContent').innerHTML=`
+    <div class="mrow"><span class="ml">Área de etiqueta</span><span class="mv ac">${(v.lblW*v.lblH/100).toFixed(1)} cm²</span></div>
+    <div class="mrow"><span class="ml">Sello mínimo</span><span class="mv ${maxSello>25?'wn':''}">${maxSello.toFixed(1)} × ${maxSello.toFixed(1)} mm</span></div>
+    <div class="mrow"><span class="ml">Fuente título</span><span class="mv">${fonts.titulo} mm</span></div>
+    <div class="mrow"><span class="ml">Fuente subtítulo</span><span class="mv">${fonts.subtitulo} mm</span></div>
+    <div class="mrow"><span class="ml">Tabla nutricional</span><span class="mv">${fonts.nutrientes} mm</span></div>
+    <div class="mrow"><span class="ml">Ingredientes</span><span class="mv">${fonts.ingredientes} mm</span></div>
+    <div class="mrow"><span class="ml">Leyendas</span><span class="mv">${fonts.leyendas} mm</span></div>
+    <div class="mrow"><span class="ml">Sellos requeridos</span><span class="mv ${totalSellos>0?'dn':'ac'}">${totalSellos}</span></div>`;
+  document.getElementById('dimResult').style.display='block';
+
+  let crHtml='';
+  selPaises.forEach(cod=>{
+    const reg=REGS[cod], r=paisRes[cod], cnt=r.sellos?r.sellos.length:0;
+    crHtml+=`<div class="cr"><div class="cr-head"><span class="cr-name">${reg.flag} ${reg.name}</span>
+      <span class="cr-st ${r.tipo!=='oct'||cnt===0?'ok':'al'}">${r.tipo==='ns'?'NutriScore':r.tipo==='sem'?'Semáforo':cnt===0?'OK':cnt+' sello'+(cnt>1?'s':'')}</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:2px;">`;
+    if(r.tipo==='ns'&&r.ns) crHtml+=`<span class="chip on">NutriScore ${r.ns.l}</span>`;
+    else if(r.tipo==='sem'&&r.sem) r.sem.forEach(s=>crHtml+=`<span class="chip on">${s.n}: ${s.l}</span>`);
+    else if(r.sellos&&r.sellos.length) r.sellos.forEach(s=>crHtml+=`<span class="chip on" title="Umbral: ${s.umbral}">${reg.txt} ${s.n} (${s.val})</span>`);
+    else crHtml+=`<span class="chip ok">Sin sellos requeridos</span>`;
+    if(r.selloMm) crHtml+=`<span class="chip" style="color:var(--muted)">⬡ ${r.selloMm}mm</span>`;
+    crHtml+=`</div></div>`;
+  });
+  document.getElementById('cresults').innerHTML=crHtml;
+
+  document.getElementById('rcontent').innerHTML=`
+    <div class="result-card"><div class="rc-title">Tipografía (mm físicos)</div>
+      ${Object.entries(fonts).map(([k,fv])=>`<div class="mrow"><span class="ml">${k}</span><span class="mv ac">${fv} mm</span></div>`).join('')}
+    </div>
+    <div class="result-card"><div class="rc-title">Valores por 100${v.tipoProd==='liquido'?'ml':'g'}</div>
+      <div class="mrow"><span class="ml">Energía</span><span class="mv">${p100.en.toFixed(1)} kcal</span></div>
+      <div class="mrow"><span class="ml">Azúcares</span><span class="mv ${p100.az>22.5?'dn':p100.az>18?'wn':''}">${p100.az.toFixed(1)} g</span></div>
+      <div class="mrow"><span class="ml">Grasas sat.</span><span class="mv ${p100.gs>6?'dn':''}">${p100.gs.toFixed(1)} g</span></div>
+      <div class="mrow"><span class="ml">Sodio</span><span class="mv ${p100.so>400?'dn':p100.so>320?'wn':''}">${p100.so.toFixed(0)} mg</span></div>
+    </div>`;
+
+  document.getElementById('tlinfo').textContent=`${v.nombre} · ${v.lblW}×${v.lblH}mm · ${totalSellos} sello${totalSellos!==1?'s':''}`;
+  rebuildBottle();
+  if(currentView==='etiqueta') draw2DLabel();
+  if(currentView==='tabla') draw2DTable();
+}
+
+// ═══ OCTAGON DRAW
+function drawOct(ctx,cx,cy,s,lineTop,lineBot,lineVal){
+  const cut=s*0.293;
+  const pts=[
+    [cx-s/2+cut,cy-s/2],[cx+s/2-cut,cy-s/2],[cx+s/2,cy-s/2+cut],[cx+s/2,cy+s/2-cut],
+    [cx+s/2-cut,cy+s/2],[cx-s/2+cut,cy+s/2],[cx-s/2,cy+s/2-cut],[cx-s/2,cy-s/2+cut]
+  ];
+  ctx.save();
+  ctx.beginPath(); pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.closePath();
+  ctx.fillStyle='#0d0d0d'; ctx.fill();
+  ctx.strokeStyle='#ffffff'; ctx.lineWidth=Math.max(1,s*0.045); ctx.stroke();
+  // inner ring
+  const ins=s*0.075;
+  ctx.beginPath();
+  ctx.moveTo(cx-s/2+cut+ins, cy-s/2+ins);
+  ctx.lineTo(cx+s/2-cut-ins, cy-s/2+ins);
+  ctx.lineTo(cx+s/2-ins,     cy-s/2+cut+ins);
+  ctx.lineTo(cx+s/2-ins,     cy+s/2-cut-ins);
+  ctx.lineTo(cx+s/2-cut-ins, cy+s/2-ins);
+  ctx.lineTo(cx-s/2+cut+ins, cy+s/2-ins);
+  ctx.lineTo(cx-s/2+ins,     cy+s/2-cut-ins);
+  ctx.lineTo(cx-s/2+ins,     cy-s/2+cut+ins);
+  ctx.closePath();
+  ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=Math.max(0.5,s*0.02); ctx.stroke();
+  // text
+  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.font=`bold ${s*0.14}px Arial Narrow,Arial,sans-serif`;
+  ctx.fillText(lineTop, cx, cy-s*0.22);
+  ctx.font=`900 ${s*0.185}px Arial Black,Impact,sans-serif`;
+  ctx.fillText(lineBot, cx, cy+s*0.04);
+  if(lineVal){ctx.font=`bold ${s*0.11}px Arial,sans-serif`;ctx.fillStyle='rgba(255,255,255,0.78)';ctx.fillText(lineVal,cx,cy+s*0.28);}
+  ctx.restore();
+}
+
+function rrect(ctx,x,y,w,h,r,fill,stroke){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+  if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.stroke();}
+}
+
+// ═══ LABEL DRAW ENGINE
+function drawLabel(ctx,TW,TH,v,p100,paisRes,fonts){
+  const mm=TW/v.lblW; // pixels per mm
+
+  // bg
+  ctx.fillStyle=v.bgColor; ctx.fillRect(0,0,TW,TH);
+
+  // top stripe
+  const SH=TH*0.14;
+  ctx.fillStyle=v.accColor; ctx.fillRect(0,0,TW,SH);
+  ctx.fillStyle='#fff';
+  ctx.font=`bold ${Math.max(12,+fonts.titulo*mm)}px Georgia,serif`;
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText(v.nombre.toUpperCase(), 9*mm, SH*0.52);
+  ctx.font=`${Math.max(7,+fonts.subtitulo*mm)}px Arial,sans-serif`;
+  ctx.fillStyle='rgba(255,255,255,0.82)';
+  const tp=v.tipoProd==='liquido'?'ml':'g';
+  ctx.fillText(`Porción ${v.porcion}${tp} · ${v.nporciones} por envase`, 9*mm, SH*0.82);
+  ctx.textBaseline='alphabetic';
+
+  // layout zones
+  const bodyY=SH+3*mm, bodyH=TH-SH-18*mm-3*mm;
+  const LW=TW*0.55, RX=TW*0.57, RW=TW*0.41;
+
+  // ── LEFT: nutrition strip ──
+  const nPx=Math.max(6,+fonts.nutrientes*mm);
+  ctx.fillStyle=v.txtColor;
+  ctx.font=`bold ${nPx*1.15}px Arial,sans-serif`;
+  ctx.textAlign='left';
+  ctx.fillText('Información Nutricional', 8*mm, bodyY+nPx*1.9);
+  ctx.fillStyle=v.txtColor; ctx.fillRect(8*mm, bodyY+nPx*2.5, LW*0.9, Math.max(1,2*mm));
+
+  const nrows=[
+    {l:'Energía',       v2:`${v.energia} kcal`, hi:p100.en>275},
+    {l:'Carbohidratos', v2:`${v.carbos} g`},
+    {l:'Azúcares',      v2:`${v.azucares} g`,   hi:p100.az>22.5},
+    {l:'Grasas totales',v2:`${v.grasas} g`},
+    {l:'Grasas sat.',   v2:`${v.grasasSat} g`,  hi:p100.gs>6},
+    {l:'Proteínas',     v2:`${v.proteinas} g`},
+    {l:'Sodio',         v2:`${v.sodio} mg`,       hi:p100.so>400},
+  ];
+  const rowH=(bodyH*0.65)/nrows.length;
+  nrows.forEach((r,i)=>{
+    const ry=bodyY+nPx*3.1+i*rowH;
+    if(r.hi){ctx.fillStyle='rgba(200,0,0,0.07)';ctx.fillRect(8*mm,ry-rowH*.05,LW*.9,rowH*.95);}
+    ctx.fillStyle=r.hi?'#bb0000':v.txtColor;
+    ctx.font=`${r.hi?'bold ':''}${nPx}px Arial,sans-serif`;
+    ctx.textAlign='left'; ctx.fillText(r.l, 10*mm, ry+rowH*.68);
+    ctx.textAlign='right'; ctx.font=`bold ${nPx}px Arial,sans-serif`;
+    ctx.fillText(r.v2, LW*.96, ry+rowH*.68);
+    ctx.fillStyle=v.txtColor+'2a'; ctx.fillRect(8*mm,ry+rowH*.88,LW*.9,Math.max(.5,.5*mm));
+  });
+  const legPx=Math.max(5,+fonts.leyendas*mm);
+  ctx.fillStyle=v.txtColor+'77'; ctx.font=`${legPx}px Arial,sans-serif`; ctx.textAlign='left';
+  ctx.fillText(`Por 100${tp}: ${p100.en.toFixed(0)} kcal · az.${p100.az.toFixed(1)}g · Na${p100.so.toFixed(0)}mg`, 8*mm, bodyY+bodyH*.76);
+
+  // ── RIGHT: WARNING SEALS ──
+  // Gather and deduplicate seals across all selected countries
+  let allSellos=[];
+  selPaises.forEach(cod=>{
+    const r=paisRes[cod], reg=REGS[cod];
+    if(!r||r.tipo!=='oct'||!r.sellos) return;
+    r.sellos.forEach(s=>{
+      if(!allSellos.find(x=>x.n===s.n))
+        allSellos.push({n:s.n, val:s.val, txt:reg.txt, selloMm:r.selloMm});
+    });
+  });
+
+  const nsRes=selPaises.filter(c=>paisRes[c]&&paisRes[c].tipo==='ns').map(c=>paisRes[c].ns);
+  const semRes=selPaises.filter(c=>paisRes[c]&&paisRes[c].tipo==='sem').map(c=>paisRes[c].sem);
+  const hasAlternative=nsRes.length>0||semRes.length>0;
+
+  // Calculate sello pixel size to fit perfectly in right zone
+  const gap=3*mm;
+  let selloS;
+  if(allSellos.length===0){
+    selloS=Math.min(RW*.55, bodyH*.38);
+  } else {
+    const cols=allSellos.length===1?1:allSellos.length<=4?2:3;
+    const rows2=Math.ceil(allSellos.length/cols);
+    // leave 25% of right height for NS/sem if present
+    const avH=hasAlternative?bodyH*0.72:bodyH*0.96;
+    selloS=Math.min(
+      (RW-(cols-1)*gap)/cols,
+      (avH-(rows2-1)*gap)/rows2
+    );
+  }
+  selloS=Math.max(16*mm, Math.min(selloS, 40*mm));
+  const cols=allSellos.length<=1?1:allSellos.length<=4?2:3;
+
+  if(allSellos.length===0 && !hasAlternative){
+    // Green OK badge
+    rrect(ctx,RX+RW*.05,bodyY+bodyH*.2,RW*.9,bodyH*.25,5*mm,'#1E8F4E1a','#1E8F4E');
+    ctx.lineWidth=1.5*mm;
+    ctx.fillStyle='#1E8F4E'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.font=`bold ${Math.max(8,9*mm)}px Arial,sans-serif`;
+    ctx.fillText('✓ SIN SELLOS', RX+RW/2, bodyY+bodyH*.32);
+    ctx.font=`${Math.max(6,7*mm)}px Arial,sans-serif`; ctx.fillStyle='#1E8F4E99';
+    ctx.fillText('Cumple todos los umbrales', RX+RW/2, bodyY+bodyH*.39);
+    ctx.textBaseline='alphabetic';
+  } else {
+    allSellos.forEach((s,i)=>{
+      const col=i%cols, row=Math.floor(i/cols);
+      const cx2=RX+col*(selloS+gap)+selloS/2;
+      const cy2=bodyY+2*mm+row*(selloS+gap)+selloS/2;
+      drawOct(ctx,cx2,cy2,selloS,s.txt,s.n,s.val);
+    });
+  }
+
+  // NutriScore
+  if(nsRes.length>0){
+    const ns=nsRes[0];
+    const nsY=bodyY+bodyH*0.76, nsH=bodyH*0.19, nsW=RW;
+    const letras=['A','B','C','D','E'], colors=['#1E8F4E','#81C341','#FFCC00','#FF6600','#E63312'];
+    const lw=nsW/5;
+    letras.forEach((l,i)=>{
+      const active=l===ns.l;
+      rrect(ctx,RX+i*lw,nsY,lw-2,nsH,3*mm,active?colors[i]:'#cccccc');
+      ctx.fillStyle=active?'#fff':'#888'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.font=`bold ${active?nsH*.65:nsH*.45}px Arial Black,sans-serif`;
+      ctx.fillText(l,RX+i*lw+lw/2-1,nsY+nsH/2);
+      ctx.textBaseline='alphabetic';
+    });
+  }
+
+  // Semáforo (shown when no octagon seals)
+  if(semRes.length>0 && allSellos.length===0){
+    const sem=semRes[0];
+    const semY=bodyY+bodyH*0.45, semW=RW/sem.length-3*mm, semH=bodyH*0.28;
+    sem.forEach((s,i)=>{
+      const sx=RX+i*(semW+3*mm);
+      rrect(ctx,sx,semY,semW,semH,5*mm,s.c);
+      ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.font=`bold ${semH*0.28}px Arial,sans-serif`; ctx.fillText(s.l,sx+semW/2,semY+semH*.38);
+      ctx.font=`${semH*0.19}px Arial,sans-serif`; ctx.fillStyle='rgba(255,255,255,.85)';
+      ctx.fillText(s.n,sx+semW/2,semY+semH*.72);
+      ctx.textBaseline='alphabetic';
+    });
+  }
+
+  // outer border
+  ctx.strokeStyle=v.accColor; ctx.lineWidth=Math.max(1.5,2.5*mm);
+  ctx.strokeRect(1.5,1.5,TW-3,TH-3);
+
+  // bottom bar
+  const botY=TH-18*mm;
+  ctx.fillStyle=v.accColor; ctx.fillRect(0,botY,TW,18*mm);
+  ctx.fillStyle='#fff'; ctx.font=`${Math.max(5,legPx)}px Arial,sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('Conservar en lugar fresco y seco · Agitar antes de consumir',TW/2,botY+9*mm);
+  ctx.textBaseline='alphabetic';
+}
+
+// ═══ 2D VIEWS
+function draw2DLabel(){
+  if(!calcData) return;
+  const {v,p100,paisRes,fonts}=calcData;
+  const cv=document.getElementById('cv2d');
+  const PM=3.8, TW=Math.round(v.lblW*PM), TH=Math.round(v.lblH*PM);
+  cv.width=TW; cv.height=TH;
+  const sc=Math.min(1,(window.innerWidth*.56)/TW,(window.innerHeight*.84)/TH);
+  cv.style.width=Math.round(TW*sc)+'px'; cv.style.height=Math.round(TH*sc)+'px';
+  drawLabel(cv.getContext('2d'),TW,TH,v,p100,paisRes,fonts);
+}
+function draw2DTable(){
+  if(!calcData) return;
+  const {v,p100}=calcData;
+  const cv=document.getElementById('cv2d');
+  cv.width=520; cv.height=700;
+  const sc=Math.min(1,(window.innerHeight*.86)/700);
+  cv.style.width=Math.round(520*sc)+'px'; cv.style.height=Math.round(700*sc)+'px';
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,520,700);
+  drawNutFacts(ctx,20,20,480,v,p100);
+}
+function drawNutFacts(ctx,x,y,W,v,p100){
+  const tp=v.tipoProd==='liquido'?'ml':'g'; let cy=y;
+  ctx.fillStyle='#000'; ctx.fillRect(x,cy,W,66); cy+=66;
+  ctx.fillStyle='#fff'; ctx.font='bold 34px Arial Black,sans-serif'; ctx.textAlign='left';
+  ctx.fillText('Información Nutricional',x+10,y+46);
+  ctx.fillStyle='#000'; ctx.font='bold 13px Arial,sans-serif';
+  ctx.fillText(`${v.nporciones} porción${v.nporciones>1?'es':''} por envase`,x+10,cy+15); cy+=20;
+  ctx.font='13px Arial,sans-serif';
+  ctx.fillText(`Tamaño de porción ${v.porcion}${tp}`,x+10,cy+15); cy+=25;
+  ctx.fillRect(x,cy,W,6); cy+=10;
+  ctx.font='12px Arial,sans-serif'; ctx.fillStyle='#333';
+  ctx.fillText('Calorías',x+10,cy+28);
+  ctx.textAlign='right'; ctx.font='bold 36px Arial Black,sans-serif'; ctx.fillStyle='#000';
+  ctx.fillText(`${v.energia}`,x+W-10,cy+32); ctx.textAlign='left'; cy+=46;
+  ctx.fillRect(x,cy,W,3); cy+=7;
+  ctx.font='10px Arial,sans-serif'; ctx.fillStyle='#555';
+  ctx.fillText('% Valor Diario*',x+W-90,cy+12); cy+=17;
+  const rows=[
+    {l:'Grasas Totales',v2:`${v.grasas}g`,dv:(v.grasas/78*100).toFixed(0),b:true},
+    {l:'  Grasas Saturadas',v2:`${v.grasasSat}g`,dv:(v.grasasSat/20*100).toFixed(0)},
+    {l:'  Grasas Trans',v2:`${v.grasasTrans}g`,dv:'—'},
+    {l:'Sodio',v2:`${v.sodio}mg`,dv:(v.sodio/2300*100).toFixed(0),b:true,hi:p100.so>400},
+    {l:'Carbohidratos',v2:`${v.carbos}g`,dv:(v.carbos/275*100).toFixed(0),b:true},
+    {l:'  Fibra Dietaria',v2:`${v.fibra}g`,dv:(v.fibra/28*100).toFixed(0)},
+    {l:'  Azúcares',v2:`${v.azucares}g`,dv:'—',hi:p100.az>22.5},
+    {l:'  Azúcares Añadidos',v2:`${v.azucares}g`,dv:(v.azucares/50*100).toFixed(0)},
+    {l:'Proteínas',v2:`${v.proteinas}g`,dv:'—',b:true},
+  ];
+  rows.forEach(r=>{
+    if(r.hi){ctx.fillStyle='#ffecec';ctx.fillRect(x,cy,W,22);}
+    ctx.fillStyle=r.hi?'#cc0000':'#000';
+    ctx.font=`${r.b?'bold ':''}${r.l.startsWith('  ')?11:12}px Arial,sans-serif`;
+    ctx.fillText(r.l,x+10,cy+15);
+    ctx.textAlign='right'; ctx.font='12px Arial,sans-serif'; ctx.fillStyle='#000';
+    ctx.fillText(r.v2,x+W-75,cy+15); ctx.fillStyle='#333';
+    ctx.fillText(r.dv!=='—'?r.dv+'%':'',x+W-10,cy+15); ctx.textAlign='left';
+    ctx.fillStyle='#ddd'; ctx.fillRect(x,cy+19,W,1);
+    cy+=22;
+  });
+  ctx.fillStyle='#000'; ctx.fillRect(x,cy,W,4); cy+=12;
+  ctx.font='9px Arial,sans-serif'; ctx.fillStyle='#555';
+  ctx.fillText('*% VD basado en dieta de 2,000 kcal.',x+10,cy+12); cy+=22;
+  ctx.fillStyle='#888';
+  ctx.fillText(`Valores por 100${tp}: En ${p100.en.toFixed(0)}kcal | Az ${p100.az.toFixed(1)}g | GS ${p100.gs.toFixed(1)}g | Na ${p100.so.toFixed(0)}mg`,x+10,cy+12);
+}
+
+// ═══ 3D BOTTLE — size driven by label dimensions
+function initThree(){
+  const canvas=document.getElementById('three-canvas');
+  const W=canvas.parentElement.clientWidth, H=canvas.parentElement.clientHeight;
+  renderer3=new THREE.WebGLRenderer({canvas,antialias:true});
+  renderer3.setSize(W,H); renderer3.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer3.shadowMap.enabled=true; renderer3.outputEncoding=THREE.sRGBEncoding;
+  scene=new THREE.Scene(); scene.background=new THREE.Color('#0e0e0f');
+  scene.fog=new THREE.Fog('#0e0e0f',15,30);
+  camera=new THREE.PerspectiveCamera(38,W/H,0.1,100);
+  camera.position.set(0,0.5,7);
+  scene.add(new THREE.AmbientLight(0xffffff,0.32));
+  const kl=new THREE.DirectionalLight(0xffffff,1.35); kl.position.set(4,7,4); kl.castShadow=true; scene.add(kl);
+  const fl=new THREE.DirectionalLight(0x99aaff,0.32); fl.position.set(-4,0,-3); scene.add(fl);
+  const rl=new THREE.DirectionalLight(0xc8f53a,0.22); rl.position.set(0,-3,-5); scene.add(rl);
+  const flr=new THREE.Mesh(new THREE.PlaneGeometry(30,30),new THREE.MeshStandardMaterial({color:0x111113,roughness:.9}));
+  flr.rotation.x=-Math.PI/2; flr.position.y=-4; flr.receiveShadow=true; scene.add(flr);
+  canvas.addEventListener('mousedown',e=>{mouseDown=true;lastMX=e.clientX;});
+  canvas.addEventListener('mousemove',e=>{if(!mouseDown)return;targetRotY+=(e.clientX-lastMX)*.011;lastMX=e.clientX;});
+  canvas.addEventListener('mouseup',()=>mouseDown=false);
+  canvas.addEventListener('mouseleave',()=>mouseDown=false);
+  canvas.addEventListener('wheel',e=>{camera.position.z=Math.max(2,Math.min(14,camera.position.z+e.deltaY*.005));e.preventDefault();},{passive:false});
+  let ltx=0;
+  canvas.addEventListener('touchstart',e=>ltx=e.touches[0].clientX);
+  canvas.addEventListener('touchmove',e=>{targetRotY+=(e.touches[0].clientX-ltx)*.013;ltx=e.touches[0].clientX;e.preventDefault();},{passive:false});
+  window.addEventListener('resize',()=>{
+    const W2=canvas.parentElement.clientWidth,H2=canvas.parentElement.clientHeight;
+    camera.aspect=W2/H2; camera.updateProjectionMatrix(); renderer3.setSize(W2,H2);
+  });
+  document.getElementById('spinner').style.display='none';
+  animate();
+}
+
+function rebuildBottle(){
+  if(!calcData) return;
+  const {v,p100,paisRes,fonts}=calcData;
+  if(bottleGroup){scene.remove(bottleGroup); bottleGroup=null;}
+
+  // ── SCALE from label dimensions ──
+  // Label wraps ~78% of bottle circumference at widest label band
+  // Scene units: 1 unit = 10mm
+  const SU=1/10; // scene units per mm
+  const lblWsu=v.lblW*SU;
+  const lblHsu=v.lblH*SU;
+  // circumference at label band = lblW / 0.78
+  const C=lblWsu/0.78;
+  const BR=C/(2*Math.PI); // bottle radius at label band
+  // bottle total height: label covers ~52% of body height
+  const BH=lblHsu/0.52;
+
+  // Coca-Cola contour profile: [r_norm, y_norm] where r is fraction of BR, y is fraction of BH
+  const profile=[
+    [0.70,0.00],[0.85,0.025],[0.82,0.07],[0.78,0.13],
+    [0.62,0.21],[0.67,0.30],[0.82,0.41],[0.80,0.49],[0.78,0.53],
+    [0.62,0.61],[0.68,0.69],[0.78,0.77],
+    [0.70,0.82],[0.36,0.87],[0.27,0.91],[0.24,0.95],[0.27,0.99],[0.31,1.01],
+  ];
+  const pts=profile.map(([r,y])=>new THREE.Vector2(r*BR, y*BH-BH*0.5));
+
+  // Build label texture (high res)
+  const TEXW=2048, TEXH=Math.max(256,Math.round(TEXW*(v.lblH/v.lblW)));
+  const tcv=document.createElement('canvas'); tcv.width=TEXW; tcv.height=TEXH;
+  drawLabel(tcv.getContext('2d'),TEXW,TEXH,v,p100,paisRes,fonts);
+  const lblTex=new THREE.CanvasTexture(tcv); lblTex.needsUpdate=true;
+
+  const bottleMat=new THREE.MeshPhysicalMaterial({map:lblTex,roughness:0.2,metalness:0.04,color:0xffffff});
+  const bcMap={clear:0xaaddff,green:0x44aa55,amber:0xcc8833,blue:0x3366cc};
+  const glassMat=new THREE.MeshPhysicalMaterial({
+    color:bcMap[v.bottleColor]||0xaaddff,roughness:0.05,metalness:0,
+    transparent:true,opacity:0.2,side:THREE.BackSide
+  });
+
+  const geo=new THREE.LatheGeometry(pts,80);
+  const bMesh=new THREE.Mesh(geo,bottleMat); bMesh.castShadow=true;
+  const gMesh=new THREE.Mesh(geo.clone(),glassMat);
+
+  // Cap
+  const capH=new THREE.CylinderGeometry(0.27*BR,0.30*BR,BH*0.038,32);
+  const capHex=parseInt(v.capColor.replace('#',''),16);
+  const cap=new THREE.Mesh(capH,new THREE.MeshStandardMaterial({color:capHex,roughness:0.4}));
+  cap.position.y=BH*0.5+BH*0.019;
+
+  // Base
+  const base=new THREE.Mesh(new THREE.CircleGeometry(0.70*BR,40),new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:.9}));
+  base.rotation.x=-Math.PI/2; base.position.y=-BH*0.5+0.01;
+
+  bottleGroup=new THREE.Group();
+  bottleGroup.add(gMesh,bMesh,cap,base);
+  bottleGroup.position.y=BH*0.08;
+  scene.add(bottleGroup);
+
+  // Auto-fit camera
+  camera.position.z=Math.max(2.5,BH*2.0+BR*2);
+}
+
+function animate(){
+  requestAnimationFrame(animate); clock_t+=0.004;
+  rotY+=(targetRotY-rotY)*0.07;
+  if(bottleGroup){
+    bottleGroup.rotation.y=rotY+Math.sin(clock_t*.25)*.025;
+    bottleGroup.position.y+=( (calcData?calcData.v.lblH/1000*.08:0.2)+Math.sin(clock_t*.45)*.03 - bottleGroup.position.y)*0.05;
+  }
+  renderer3.render(scene,camera);
+}
+
+window.addEventListener('load',()=>{updateBadge();initThree();calcularTodo();});
+</script>
+</body>
+</html>
